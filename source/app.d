@@ -11,12 +11,12 @@ extern (C) int UIAppMain(string[] args) {
     
     // TODO: Setup text antialiasing
 
-    Window window = Platform.instance.createWindow("Glamorgan", null, WindowFlag.Resizable, 1280, 720);
-
-    Platform.instance.resourceDirs = [ "views" ];
+    embeddedResourceList.addResources(embedResourcesFromList!("resources.list")());
 
     Platform.instance.uiLanguage = "en";
     //TODO: Textmode!
+
+    Window window = Platform.instance.createWindow("Glamorgan", null, WindowFlag.Resizable, 1280, 720);
 
     window.windowIcon = drawableCache.getImage("glamorgan-logo");   
     EditorFrame frame = new EditorFrame(window);
