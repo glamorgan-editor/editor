@@ -5,13 +5,11 @@
     "license": "MIT",
     "authors": ["Curle", "destoer"],
 
-    "stringImportPaths": ["views", "views/res", "views/res/i18n"],
+    "stringImportPaths": ["views"],
 
     "dependencies": {
-        "dlangui": {"path": "../../"}
+        "dlangui": "~master"
     },
 
-    "targetName": "Glamorgan Editor",
-
-    "versions": ["EmbedStandardResources"]
+    "targetName": "Glamorgan Editor"
 }
