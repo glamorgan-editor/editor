@@ -1,0 +1,17 @@
+{
+    "name": "Glamorgan",
+    "description": "Pachel's Text Editor in D",
+    "homepage": "https://glamorgan.github.io",
+    "license": "MIT",
+    "authors": ["Curle", "destoer"],
+
+    "stringImportPaths": ["views", "views/res", "views/res/i18n"],
+
+    "dependencies": {
+        "dlangui": {"path": "../../"}
+    },
+
+    "targetName": "Glamorgan Editor",
+
+    "versions": ["EmbedStandardResources"]
+}
