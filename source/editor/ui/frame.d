@@ -1,17 +1,35 @@
 module source.editor.ui.frame;
 
 import dlangui;
+import dlangui.dialogs.dialog;
+import dlangui.dialogs.filedlg;
 
 import source.editor.actions.EditorCommands;
+import source.editor.widgets.NewFileDiag;
+import source.editor.workspace.types;
+import source.editor.workspace.project;
+
+import std.utf;
+import std.conv;
+import std.path;
+
+import source.editor.component.FileEditor;
+
+/**
+ * The frame containing the whole window.
+ * Everything on screen is a child of this element.
+ */
 
 class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListChangeListener, BookmarkListChangeListener */ {
     private ToolBarComboBox _currentProjectConfig;
 
-
+    // The item struct containing the main menu buttons.
     MenuItem mainMenu;
+
+    // The struct containing the currently available tabs in the editor.
     TabWidget _tabs;
 
-    private auto workspaceOpened = false;
+    private auto _workspaceOpened = false;
 
     this(Window window) {
         super();
@@ -23,11 +41,11 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
     }
 
     @property bool isWorkspaceOpened() {
-        return workspaceOpened;
+        return _workspaceOpened;
     }
 
     @property bool setWorkspaceOpened(bool status) {
-        workspaceOpened = status;
+        this._workspaceOpened = status;
         return true;
     }
 
@@ -98,14 +116,91 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
     }
 
     override bool handleAction(const Action a) {
+        import source.editor.actions.EditorCommands;
+        import dlangui.core.i18n : UIString;
         if(a) {
             switch(a.id) {
+                case EditorActions.FileNew:
+                    Log.i("Making a new file!");
+                    addNewFile(cast(Object)a.objectParam);
+                    return true;
+
+                case EditorActions.FileOpen:
+                    Log.i("Opening a file..");
+                    UIString caption;
+                    caption = UIString.fromId("HEADER_OPEN_FILE"c);
+                    FileDialog diag = createFileDialog(caption);
+
+                    diag.addFilter(FileFilterEntry(UIString.fromId("TEXT_FILES"c), "*.txt;*.log"));
+                    diag.addFilter(FileFilterEntry(UIString.fromId("ALL_FILES"c), "*.*"));
+
+                    diag.path = "C:/";
+
+                    diag.dialogResult = delegate(Dialog d, const Action result) {
+                        if(result.id == ACTION_OPEN.id) {
+                            string filename = result.stringParam;
+                            Log.i("Opening " ~ filename);
+                            openSourceFile(filename);
+                        }
+                    };
+                    diag.show();
+                    return true;
+                case EditorActions.FileExit:
+                    if(onCanClose())
+                        window.close();
+                    return true;
+
                 default: return true;
                 // TODO!
             }
         }
 
         return true;
+    }
+
+    private void addNewFile(Object obj) {
+        Dialog createNewFileDialog(Project project, ProjectFolder folder) {
+            NewFileDiag diag = new NewFileDiag(this, project, folder);
+            diag.dialogResult = delegate(Dialog dlg, const Action result) {
+                if(result.id == ACTION_FILE_NEW_SOURCE_FILE.id) {
+                    FileCreationResult res = cast(FileCreationResult) result.objectParam;
+                    if(res) {
+                        //res.project.refresh();
+                        //updateTreeGraph();
+                        Log.i("Created file ", res.filename);
+                        openSourceFile(res.filename);
+                    }
+                }
+            };
+            return diag;
+        }
+
+        addProjectItem(&createNewFileDialog, obj);
+        
+    }
+
+    private void addProjectItem(Dialog delegate(Project, ProjectFolder) dialogFactory, Object obj) {
+        Project project;
+        ProjectFolder folder;
+
+        if(cast(ProjectSourceFile)obj) {
+            Log.i("Adding a new source file to the project..");
+            ProjectSourceFile source = cast(ProjectSourceFile) obj;
+            folder = cast(ProjectFolder) source.getParent();
+            project = source.getProject();
+        }
+
+        if(project) {
+            Dialog diag = dialogFactory(project, folder);
+            Log.i("Showing new file diag..");
+            diag.show();
+        }
+    }
+
+    FileDialog createFileDialog(UIString caption, int flags = DialogFlag.Modal | DialogFlag.Resizable | FileDialogFlag.FileMustExist) {
+        FileDialog diag = new FileDialog(caption, window, null, flags);
+        
+        return diag;
     }
 
     void onFileDropped(string[] fileNames) {
@@ -117,6 +212,51 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
         }
     }
 
+    bool openSourceFile(string filename, ProjectSourceFile file = null, bool focus = true) {
+        if(!file && !filename) 
+            return false;
+        
+        //if(!file)
+            //file = _workspace.findSourceFile(filename, false);
+        
+        if(file)
+            filename = file.getFileName();
+
+        int tabLocation = _tabs.tabIndex(filename);
+        Log.i("tabl " ~ to!string(tabLocation));
+        if(tabLocation >= 0) {
+            _tabs.selectTab(tabLocation, true);
+        } else {
+            Log.i("Creating new editor window");
+            FileEditor editor = new FileEditor(filename);
+            Log.i("Editor constructed");
+
+            if(file ? editor.load(file) : editor.load(filename)) {
+                _tabs.addTab(editor, toUTF32(baseName(filename)), null, true, filename.toUTF32);
+                tabLocation = _tabs.tabIndex(filename);
+                TabItem tab = _tabs.tab(filename);
+                tab.objectParam = file;
+
+                _tabs.selectTab(tabLocation, true);
+
+                _tabs.layout(_tabs.pos);
+            } else {
+                Log.d("file ", filename, " can't be opened.");
+                destroy(editor);
+                if(window)
+                    window.showMessageBox(UIString.fromId("ERROR_OPEN_FILE"c), UIString.fromId("ERROR_OPENING_FILE"c) ~ " " ~ toUTF32(filename));
+                return false;
+            }
+        }
+
+        if(focus) {
+            focusEditor(filename);
+        }
+
+        //requestLayout();
+        return true;
+    }
+
     bool onCanClose() {
         //TODO: check for unsaved edits
         return true;
@@ -126,6 +266,14 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
         // TODO: save window state
         // TODO: save settings
         // TODO: stop subprocesses
+    }
+
+    void focusEditor(string ID) {
+        Widget widget = _tabs.tabBody(ID);
+        if(widget) {
+            if(widget.visible)
+                widget.setFocus();
+        }
     }
 
 

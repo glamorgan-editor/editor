@@ -10,6 +10,8 @@ mixin APP_ENTRY_POINT;
 extern (C) int UIAppMain(string[] args) {
     
     // TODO: Setup text antialiasing
+    File *logFile = new File(fopen("log.d", "w+"), "log.d");
+    Log.setFileLogger(logFile);
 
     embeddedResourceList.addResources(embedResourcesFromList!("resources.list")());
 
