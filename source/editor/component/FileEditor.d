@@ -35,4 +35,8 @@ class FileEditor : SourceEdit {
         return true;
     }
 
+    bool save() {
+        return _content.save();
+    }
+
 }

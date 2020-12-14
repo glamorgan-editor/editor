@@ -6,6 +6,7 @@ import dlangui.dialogs.filedlg;
 
 import source.editor.actions.EditorCommands;
 import source.editor.widgets.NewFileDiag;
+import source.editor.component.FileEditor;
 import source.editor.workspace.types;
 import source.editor.workspace.project;
 
@@ -28,6 +29,9 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
 
     // The struct containing the currently available tabs in the editor.
     TabWidget _tabs;
+
+    // The struct handling the layout of the items
+    DockHost _dockHost;
 
     private auto _workspaceOpened = false;
 
@@ -69,10 +73,10 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
         MenuItem fileItem = new MenuItem(new Action(1, "MENU_FILE"));
         MenuItem fileNewItem = new MenuItem(new Action(1, "MENU_NEW_FILE"));
 
-        fileNewItem.add(ACTION_FILE_NEW_SOURCE_FILE);
+        fileNewItem.add(ACTION_GFILE_NEW_SOURCE_FILE);
         fileItem.add(fileNewItem);
 
-        fileItem.add(ACTION_FILE_OPEN, ACTION_FILE_SAVE, ACTION_FILE_SAVE_AS, ACTION_FILE_EXIT);
+        fileItem.add(ACTION_GFILE_OPEN, ACTION_GFILE_SAVE, ACTION_GFILE_SAVE_AS, ACTION_GFILE_EXIT);
 
         // The "Edit" button
         MenuItem editItem = new MenuItem(new Action(2, "MENU_EDIT"));
@@ -84,25 +88,25 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
         editItem.addSeparator();
         editItem.add(ACTION_EDITOR_FIND, ACTION_EDITOR_REPLACE);
         editItem.addSeparator();
-        editItem.add(ACTION_EDITOR_TOGGLE_LINE_COMMENT, ACTION_EDITOR_TOGGLE_BLOCK_COMMENT, ACTION_EDIT_TOGGLE_INDENT);
+        editItem.add(ACTION_EDITOR_TOGGLE_LINE_COMMENT, ACTION_EDITOR_TOGGLE_BLOCK_COMMENT, ACTION_GEDIT_TOGGLE_INDENT);
         editItem.addSeparator();
-        editItem.add(ACTION_EDIT_PREFERENCES);
+        editItem.add(ACTION_GEDIT_PREFERENCES);
 
         // The "View" button
 
         MenuItem viewItem = new MenuItem(new Action(3, "MENU_VIEW"));
 
-        viewItem.add(ACTION_WINDOW_SHOW_HOME);
+        viewItem.add(ACTION_GWINDOW_SHOW_HOME);
         viewItem.addSeparator();
-        viewItem.addCheck(ACTION_VIEW_TOGGLE_TOOLBAR);
-        viewItem.addCheck(ACTION_VIEW_TOGGLE_STATUS);
+        viewItem.addCheck(ACTION_GVIEW_TOGGLE_TOOLBAR);
+        viewItem.addCheck(ACTION_GVIEW_TOGGLE_STATUS);
         
 
         // The "Help" button
 
         MenuItem helpItem = new MenuItem(new Action(4, "MENU_HELP"));
 
-        helpItem.add(ACTION_HELP_VIEW, ACTION_HELP_ABOUT);
+        helpItem.add(ACTION_GHELP_VIEW, ACTION_GHELP_ABOUT);
 
         mainMenu.add(fileItem);
         mainMenu.add(editItem);
@@ -113,6 +117,52 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
 
         return menu;
 
+    }
+
+    override protected Widget createBody() {
+        _dockHost = new DockHost();
+
+        _tabs = new TabWidget("tabs");
+        _tabs.hiddenTabsVisibility = Visibility.Gone;
+        _dockHost.bodyWidget = _tabs;
+        _tabs.setStyles(STYLE_DOCK_WINDOW, STYLE_TAB_UP_DARK, STYLE_TAB_UP_BUTTON_DARK, STYLE_TAB_UP_BUTTON_DARK_TEXT, STYLE_DOCK_HOST_BODY);
+
+        _tabs.tabClose = &onTabClose;
+
+        return _dockHost;
+    }
+
+    protected void onTabClose(string tabID) {
+        Log.i("Closing tab " ~ tabID);
+        int index = _tabs.tabIndex(tabID);
+        if (index >= 0) {
+            FileEditor editor = cast(FileEditor) _tabs.tabBody(tabID);
+            if(editor && editor.content.modified) {
+                window.showMessageBox(UIString.fromId("CLOSE_MODIFIED_TAB"c), 
+                    UIString.fromId("MSG_TAB_CHANGED") ~ ": " ~ toUTF32(baseName(tabID)),
+                    [ACTION_SAVE, ACTION_DISCARD_CHANGES, ACTION_CANCEL],
+                    0,
+                    delegate(const Action result) {
+                        if(result == StandardAction.Save) {
+                            editor.save();
+                            closeTab(tabID);
+                        } else if (result == StandardAction.DiscardChanges) {
+                            closeTab(tabID);
+                        }
+                        return true;
+                    }
+                );
+            } else {
+                closeTab(tabID);
+            }
+        }
+        
+        requestActionsUpdate();
+    }
+
+    void closeTab(string tabID) {
+        _tabs.removeTab(tabID);
+        _tabs.focusSelectedTab();
     }
 
     override bool handleAction(const Action a) {
@@ -162,10 +212,10 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
         Dialog createNewFileDialog(Project project, ProjectFolder folder) {
             NewFileDiag diag = new NewFileDiag(this, project, folder);
             diag.dialogResult = delegate(Dialog dlg, const Action result) {
-                if(result.id == ACTION_FILE_NEW_SOURCE_FILE.id) {
+                if(result.id == ACTION_GFILE_NEW_SOURCE_FILE.id) {
                     FileCreationResult res = cast(FileCreationResult) result.objectParam;
                     if(res) {
-                        //res.project.refresh();
+                        res.project.refresh();
                         //updateTreeGraph();
                         Log.i("Created file ", res.filename);
                         openSourceFile(res.filename);
@@ -188,6 +238,8 @@ class EditorFrame : AppFrame /*, ProgramExecutionStatusListener, BreakpointListC
             ProjectSourceFile source = cast(ProjectSourceFile) obj;
             folder = cast(ProjectFolder) source.getParent();
             project = source.getProject();
+        } else {
+            Log.i("Unable to determine type of obj");
         }
 
         if(project) {

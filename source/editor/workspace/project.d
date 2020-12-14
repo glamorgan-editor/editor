@@ -49,6 +49,10 @@ class Project : WorkspaceItem {
         }
     }
 
+    void refresh() {
+        
+    }
+
     string relativeToAbsolutePath(string path) {
         if (isAbsolute(path))
             return path;

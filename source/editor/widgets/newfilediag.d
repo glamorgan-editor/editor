@@ -59,7 +59,7 @@ class NewFileDiag : Dialog {
 
 
     this(EditorFrame parent, Project currProject, ProjectFolder folder) {
-        super(UIString.fromId("OPTION_NEW_SOURCE_FILE"c), parent.window, 
+        super(UIString.fromId("OPTION_GNEW_SOURCE_FILE"c), parent.window, 
                 DialogFlag.Modal | DialogFlag.Resizable | DialogFlag.Popup, 
                 500, 400);
             
@@ -195,7 +195,7 @@ class NewFileDiag : Dialog {
         };
 
         addChild(content);
-        addChild(createButtonsPanel([ACTION_FILE_NEW_SOURCE_FILE, ACTION_CANCEL], 0, 0));
+        addChild(createButtonsPanel([ACTION_GFILE_NEW_SOURCE_FILE, ACTION_GCANCEL], 0, 0));
     }
 
     protected bool onEnter(EditWidgetBase edit) {
