@@ -9,7 +9,6 @@ class FileEditor : SourceEdit {
     /// Constructor taking the name of the tab.
     this(string ID) {
         super(ID);
-
     }
 
     /// Default constructor - initialises to the landing page

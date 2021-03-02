@@ -20,6 +20,9 @@ class AbstractProjectItem {
     protected string _fileName;
     protected dstring _name;
 
+    /// Is this file created by a temp operation
+    protected bool _temp;
+
     /// Constructor with a file name. Can be a path.
     this(string fileName) {
         _fileName = buildNormalizedPath(fileName);
@@ -40,6 +43,14 @@ class AbstractProjectItem {
 
     @property void setProject(Project newProject) {
         _project = newProject;
+    }
+
+    @property bool getTemp() {
+        return _temp;
+    }
+
+    @property void setTemp(bool temp) {
+        _temp = temp;
     }
 
     /// Is path/fileName the current file?

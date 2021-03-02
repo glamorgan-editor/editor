@@ -11,6 +11,8 @@ import source.editor.workspace.types;
 import source.editor.workspace.project;
 
 import std.utf;
+import std.ascii;
+import std.random;
 import std.conv;
 import std.path;
 
@@ -134,6 +136,15 @@ class EditorFrame : AppFrame {
         return _dockHost;
     }
 
+    @property ProjectSourceFile currentOpenSourceFile() {
+        TabItem tab = _tabs.selectedTab;
+        if (tab) {
+            return cast(ProjectSourceFile)tab.objectParam;
+        }
+        return null;
+    }
+
+
     protected void onTabClose(string tabID) {
         Log.i("Closing tab " ~ tabID);
         const int index = _tabs.tabIndex(tabID);
@@ -212,7 +223,10 @@ class EditorFrame : AppFrame {
     }
 
     private void addNewFile(Object obj) {
-        Dialog createNewFileDialog(Project project, ProjectFolder folder) {
+        import std.ascii : letters;
+        import std.path : buildPath;
+        import std.file : FileException, write, tempDir;
+        /*Dialog createNewFileDialog(Project project, ProjectFolder folder) {
             NewFileDiag diag = new NewFileDiag(this, project, folder);
             diag.dialogResult = delegate(Dialog dlg, const Action result) {
                 if(result.id == ACTION_GFILE_NEW_SOURCE_FILE.id) {
@@ -226,9 +240,25 @@ class EditorFrame : AppFrame {
                 }
             };
             return diag;
+        }*/
+
+
+        const auto tempID = letters.byCodeUnit.randomSample(10).to!string;
+        auto filename = tempDir.buildPath(tempID ~ "New.txt");
+        // Touch the file with empty contents so the editor can see it
+        try {
+            write(filename, "");
+        } catch(FileException e) {
+            Log.i("Unable to touch temp file! " ~ e.msg 
+                    ~ "\n" ~ e.errno.to!string ~ "\n" ~ e.file ~ ":" ~ e.line.to!string);
         }
 
-        addProjectItem(&createNewFileDialog, obj);
+        Log.i("Created temporary file " ~ filename ~ " for the editor to open");
+
+        ProjectSourceFile source = new ProjectSourceFile(filename);
+        source.setTemp(true);
+
+        openSourceFile(filename, source);
         
     }
 
@@ -243,6 +273,12 @@ class EditorFrame : AppFrame {
             project = source.getProject();
         } else {
             Log.i("Unable to determine type of obj");
+            ProjectSourceFile source = currentOpenSourceFile();
+            Log.i("Assuming contextless action. Current file is %s", source.getFileName());
+            if(source) {
+                folder = cast(ProjectFolder) source.getParent();
+                project = source.getProject();
+            }
         }
 
         if(project) {
@@ -291,23 +327,23 @@ class EditorFrame : AppFrame {
             FileEditor editor = new FileEditor(filename);
             Log.i("Editor constructed");
 
-            if(file ? editor.load(file) : editor.load(filename)) {
-                _tabs.addTab(editor, toUTF32(baseName(filename)), null, true, filename.toUTF32);
-                tabLocation = _tabs.tabIndex(filename);
-                TabItem tab = _tabs.tab(filename);
-                tab.objectParam = file;
-
-                _tabs.selectTab(tabLocation, true);
-
-                _tabs.layout(_tabs.pos);
-            } else {
+            if(!(file ? editor.load(file) : editor.load(filename))) {
                 Log.d("file ", filename, " can't be opened.");
-                destroy(editor);
-                if(window)
-                    window.showMessageBox(UIString.fromId("ERROR_OPEN_FILE"c), 
-                        UIString.fromId("ERROR_OPENING_FILE"c) ~ " " ~ toUTF32(filename));
+                if(filename != "New File") {
+                    if(window)
+                        window.showMessageBox(UIString.fromId("ERROR_OPEN_FILE"c), 
+                            UIString.fromId("ERROR_OPENING_FILE_1"c) ~ " " ~ toUTF32(filename) ~ " " ~ UIString.fromId("ERROR_OPENING_FILE_2"c));
+                }
+                Log.w("Aborting file open operation");
                 return false;
             }
+            
+            _tabs.addTab(editor, toUTF32(baseName(filename)), null, true, filename.toUTF32);
+            tabLocation = _tabs.tabIndex(filename);
+            TabItem tab = _tabs.tab(filename);
+            tab.objectParam = file;
+            _tabs.selectTab(tabLocation, true);
+            _tabs.layout(_tabs.pos);
         }
 
         if(focus) {

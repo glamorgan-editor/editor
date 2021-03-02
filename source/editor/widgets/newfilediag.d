@@ -84,6 +84,7 @@ class NewFileDiag : Dialog {
         Widget content; 
 
         try {
+            Log.i("Creating new-file window..");
             content = parseML(q{
                 VerticalLayout {
                     id: layoutV
@@ -139,6 +140,7 @@ class NewFileDiag : Dialog {
                             layoutWidth: fill;
                             textColor: 0xFF0000
                         }
+        
                 }
             });
         } catch (Exception except) {
