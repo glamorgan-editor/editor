@@ -1,15 +1,17 @@
 {
-    "name": "Glamorgan",
-    "description": "Pachel's Text Editor in D",
-    "homepage": "https://glamorgan.github.io",
-    "license": "MIT",
-    "authors": ["Curle", "destoer"],
-
-    "stringImportPaths": ["views"],
-
-    "dependencies": {
-        "dlangui": "~master"
-    },
-
-    "targetName": "Glamorgan Editor"
+	"authors": [
+		"Curle",
+		"destoer"
+	],
+	"dependencies": {
+		"dlangui": "~>0.9.186"
+	},
+	"description": "Mapping, but better.",
+	"homepage": "https://gemwire.uk/projects/ameliorator",
+	"license": "MIT",
+	"name": "ameliorator",
+	"stringImportPaths": [
+		"views"
+	],
+	"targetName": "Ameliorator"
 }

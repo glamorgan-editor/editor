@@ -16,9 +16,9 @@ extern (C) int UIAppMain(string[] args) {
     Platform.instance.uiLanguage = "en";
     //TODO: Textmode!
 
-    Window window = Platform.instance.createWindow("Glamorgan", null, WindowFlag.Resizable, 1280, 720);
+    Window window = Platform.instance.createWindow("Ameliorator", null, WindowFlag.Resizable, 1280, 720);
 
-    window.windowIcon = drawableCache.getImage("glamorgan-logo");   
+    window.windowIcon = drawableCache.getImage("ameliorator-logo");   
     EditorFrame frame = new EditorFrame(window);
     
     //TODO: Allow opening files from command line
