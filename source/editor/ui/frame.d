@@ -60,6 +60,7 @@ class EditorFrame : AppFrame {
         _appName = "Glamorgan";
 
         super.initialize();
+        addNewFile(null);
     }
 
     /*override protected Widget createBody() {
@@ -173,10 +174,27 @@ class EditorFrame : AppFrame {
         requestActionsUpdate();
     }
 
+
+    @property FileEditor currentEditor() {
+        return cast(FileEditor) _tabs.selectedTabBody();
+    }
+
     /// Remove the selected tab and return focus to the currently active tab, or the last.
     void closeTab(string tabID) {
         _tabs.removeTab(tabID);
         _tabs.focusSelectedTab();
+    }
+    
+    void renameTab(string oldfilename, string newfilename) {
+        int index = _tabs.tabIndex(newfilename);
+        if (index >= 0) {
+            // file is already opened in tab - close it
+            _tabs.removeTab(newfilename);
+        }
+        int oldindex = _tabs.tabIndex(oldfilename);
+        if (oldindex >= 0) {
+            _tabs.renameTab(oldindex, newfilename, UIString.fromRaw(newfilename.baseName));
+        }
     }
 
     override bool handleAction(const Action a) {
@@ -212,6 +230,39 @@ class EditorFrame : AppFrame {
                 case EditorActions.FileExit:
                     if(onCanClose())
                         window.close();
+                    return true;
+
+                case EditorActions.FileSaveAs:
+                    FileEditor ed = currentEditor;
+                    UIString caption;
+                    caption = UIString.fromId("HEADER_SAVE_FILE_AS"c);
+                    FileDialog dlg = createFileDialog(caption, DialogFlag.Modal | DialogFlag.Resizable | FileDialogFlag.Save);
+                    dlg.addFilter(FileFilterEntry(UIString.fromId("SOURCE_FILES"c), "*.cpp, *.c, *.h, *.hpp, *.py, *.d, *.json, *.ini"));
+                    dlg.addFilter(FileFilterEntry(UIString.fromId("ALL_FILES"c), "*.*"));
+                    dlg.path = ed.filename.dirName;
+                    dlg.filename = ed.filename;
+                    dlg.dialogResult = delegate(Dialog d, const Action result) {
+                        if (result.id == ACTION_SAVE.id) {
+                            string oldfilename = ed.filename;
+                            string filename = result.stringParam;
+                            ed.save();
+                            if (oldfilename == filename)
+                                return;
+                            renameTab(oldfilename, filename);
+                            ed.id = filename;
+                            //ed.setSyntaxSupport();
+
+                            //updateTreeGraph();
+                            //ProjectSourceFile file = _tabs.findSourceFileItem(filename, false);
+                            //if (file) {
+                            //    ed.projectSourceFile = file;
+                            //} else
+                            //    ed.projectSourceFile = null;
+                            
+                        }
+                    };
+                    Log.i("Showing Save As widget");
+                    dlg.show();
                     return true;
 
                 default: return true;
@@ -259,6 +310,7 @@ class EditorFrame : AppFrame {
         source.setTemp(true);
 
         openSourceFile(filename, source);
+        renameTab(filename, "New File");
         
     }
 
